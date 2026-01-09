@@ -1,6 +1,6 @@
 export interface Category {
   id: string;
-  user_id?: string;
+  customer_id: string;
   name: string;
   subcategory?: string;
   brand?: string;
@@ -9,7 +9,7 @@ export interface Category {
 
 export interface Item {
   id: string;
-  user_id?: string;
+  customer_id: string;
   name: string;
   code: string;
   barcode?: string;
@@ -31,7 +31,6 @@ export interface CartItem {
 
 export interface Customer {
   id: string;
-  user_id?: string;
   name: string;
   email?: string;
   phone?: string;
@@ -39,14 +38,15 @@ export interface Customer {
   city?: string;
   state?: string;
   pincode?: string;
+  password_hash?: string; // For authentication (not returned to client)
   created_at: string;
   updated_at: string;
 }
 
 export interface Transaction {
   id: string;
-  user_id?: string;
-  customer_id?: string;
+  customer_id: string; // The customer who owns this transaction (the seller/store owner)
+  transaction_customer_id?: string; // The customer who made the purchase (buyer)
   total_amount: number;
   payment_method: 'cash' | 'card' | 'upi';
   received_amount?: number;

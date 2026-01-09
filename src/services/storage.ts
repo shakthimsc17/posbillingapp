@@ -31,14 +31,24 @@ function ensureSupabase() {
   return supabase;
 }
 
-// Helper function to get current user ID
-async function getCurrentUserId(): Promise<string> {
-  const client = ensureSupabase();
-  const { data: { user }, error } = await client.auth.getUser();
-  if (error || !user) {
-    throw new Error('User not authenticated. Please sign in.');
+// Helper function to get current customer ID
+// Import authStore dynamically to avoid circular dependency
+async function getCurrentCustomerId(): Promise<string> {
+  // Get customer from localStorage (since we can't import authStore directly)
+  const storedCustomer = localStorage.getItem('pos_customer');
+  if (!storedCustomer) {
+    throw new Error('Customer not authenticated. Please sign in.');
   }
-  return user.id;
+  
+  try {
+    const customer = JSON.parse(storedCustomer);
+    if (!customer || !customer.id) {
+      throw new Error('Invalid customer session. Please sign in again.');
+    }
+    return customer.id;
+  } catch (error) {
+    throw new Error('Customer not authenticated. Please sign in.');
+  }
 }
 
 export const storageService = {
@@ -47,10 +57,12 @@ export const storageService = {
     if (useSupabase) {
       try {
         const client = ensureSupabase();
+        const customerId = await getCurrentCustomerId();
         console.log('📥 Loading categories from Supabase...');
         const { data, error } = await client
           .from('categories')
           .select('*')
+          .eq('customer_id', customerId)
           .order('created_at', { ascending: false });
         if (error) {
           console.error('❌ Supabase error loading categories:', error);
@@ -69,15 +81,15 @@ export const storageService = {
     throw new Error('No storage backend available');
   },
 
-  addCategory: async (category: Omit<Category, 'id' | 'created_at' | 'user_id'>): Promise<Category> => {
+  addCategory: async (category: Omit<Category, 'id' | 'created_at' | 'customer_id'>): Promise<Category> => {
     if (useSupabase) {
       try {
         const client = ensureSupabase();
-        const userId = await getCurrentUserId();
+        const customerId = await getCurrentCustomerId();
         console.log('💾 Saving category to Supabase:', category);
         const { data, error } = await client
           .from('categories')
-          .insert({ ...category, user_id: userId })
+          .insert({ ...category, customer_id: customerId })
           .select()
           .single();
         if (error) {
@@ -138,9 +150,11 @@ export const storageService = {
   getItems: async (): Promise<Item[]> => {
     if (useSupabase) {
       const client = ensureSupabase();
+      const customerId = await getCurrentCustomerId();
       const { data, error } = await client
         .from('items')
         .select('*')
+        .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
       if (error) {
         throw new Error(`Failed to load items: ${error.message} (Code: ${error.code || 'unknown'})`);
@@ -153,14 +167,14 @@ export const storageService = {
     throw new Error('No storage backend available');
   },
 
-  addItem: async (item: Omit<Item, 'id' | 'created_at' | 'user_id'>): Promise<Item> => {
+  addItem: async (item: Omit<Item, 'id' | 'created_at' | 'customer_id'>): Promise<Item> => {
     if (useSupabase) {
       const client = ensureSupabase();
-      const userId = await getCurrentUserId();
+      const customerId = await getCurrentCustomerId();
       console.log('💾 Saving item to Supabase:', item);
       const { data, error } = await client
         .from('items')
-        .insert({ ...item, user_id: userId })
+        .insert({ ...item, customer_id: customerId })
         .select()
         .single();
       if (error) {
@@ -254,9 +268,11 @@ export const storageService = {
   getTransactions: async (): Promise<Transaction[]> => {
     if (useSupabase) {
       const client = ensureSupabase();
+      const customerId = await getCurrentCustomerId();
       const { data, error } = await client
         .from('transactions')
         .select('*')
+        .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
       if (error) {
         throw new Error(`Failed to load transactions: ${error.message} (Code: ${error.code || 'unknown'})`);
@@ -269,13 +285,13 @@ export const storageService = {
     throw new Error('No storage backend available');
   },
 
-  addTransaction: async (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'>): Promise<Transaction> => {
+  addTransaction: async (transaction: Omit<Transaction, 'id' | 'created_at' | 'customer_id'>): Promise<Transaction> => {
     if (useSupabase) {
       const client = ensureSupabase();
-      const userId = await getCurrentUserId();
+      const customerId = await getCurrentCustomerId();
       const { data, error } = await client
         .from('transactions')
-        .insert({ ...transaction, user_id: userId })
+        .insert({ ...transaction, customer_id: customerId })
         .select()
         .single();
       if (error) {
@@ -293,9 +309,11 @@ export const storageService = {
   getCustomers: async (): Promise<Customer[]> => {
     if (useSupabase) {
       const client = ensureSupabase();
+      // Get all customers (for business customer management)
+      // Exclude password_hash from results
       const { data, error } = await client
         .from('customers')
-        .select('*')
+        .select('id, name, email, phone, address, city, state, pincode, created_at, updated_at')
         .order('created_at', { ascending: false });
       if (error) {
         throw new Error(`Failed to load customers: ${error.message} (Code: ${error.code || 'unknown'})`);
@@ -308,13 +326,14 @@ export const storageService = {
     throw new Error('No storage backend available');
   },
 
-  addCustomer: async (customer: Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<Customer> => {
+  addCustomer: async (customer: Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'password_hash'>): Promise<Customer> => {
     if (useSupabase) {
       const client = ensureSupabase();
-      const userId = await getCurrentUserId();
+      // Note: This is for adding business customers, not for signup
+      // Signup uses create_customer_account function which handles password hashing
       const { data, error } = await client
         .from('customers')
-        .insert({ ...customer, user_id: userId })
+        .insert({ ...customer })
         .select()
         .single();
       if (error) {

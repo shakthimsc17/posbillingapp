@@ -21,7 +21,7 @@ function App() {
   const [authPage, setAuthPage] = useState<AuthPage>('signin');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { loadCategories, loadItems } = useInventoryStore();
-  const { user, initialized, initialize, signOut } = useAuthStore();
+  const { customer, initialized, initialize, signOut } = useAuthStore();
   const { items: cartItems } = useCartStore();
 
   useEffect(() => {
@@ -29,11 +29,11 @@ function App() {
   }, [initialize]);
 
   useEffect(() => {
-    if (initialized && user) {
+    if (initialized && customer) {
     loadCategories();
     loadItems();
     }
-  }, [initialized, user, loadCategories, loadItems]);
+  }, [initialized, customer, loadCategories, loadItems]);
 
   // Show auth pages if not signed in
   if (!initialized) {
@@ -46,7 +46,7 @@ function App() {
     );
   }
 
-  if (!user) {
+  if (!customer) {
     return (
       <div className="app">
         {authPage === 'signin' && <SignIn onNavigate={setAuthPage} />}
@@ -143,7 +143,7 @@ function App() {
 
         <div className="sidebar-footer">
           <div className="user-info">
-            <span className="user-email">{user.email}</span>
+            <span className="user-email">{customer.email || customer.name}</span>
           </div>
           <button className="btn btn-secondary btn-sm btn-block" onClick={signOut}>
             Sign Out
