@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { storageService } from '../services/storage';
 import { Transaction, Customer } from '../types';
 import { formatCurrency } from '../utils/formatters';
-import { printThermalReceipt } from '../utils/thermalPrinter';
+import { printReceipt } from '../utils/printer';
+import { useCompanyStore } from '../store/companyStore';
 import './SalesOrders.css';
 
 type FilterPeriod = 'today' | 'week' | 'month' | 'year' | 'all';
@@ -135,13 +136,143 @@ export default function SalesOrders() {
   const handlePrintReceipt = (transaction: Transaction) => {
     try {
       const items = JSON.parse(transaction.items_json);
-      printThermalReceipt({
+      printReceipt({
         items,
         transaction,
       });
     } catch (error) {
       console.error('Error printing receipt:', error);
       alert('Failed to print receipt');
+    }
+  };
+
+  const handleExportCSV = () => {
+    const company = useCompanyStore.getState().getCompany();
+    const headers = ['Date', 'Time', 'Order ID', 'Customer', 'Items Count', 'Payment Method', 'Amount', 'Profit/Loss'];
+    
+    const csvRows = [
+      [company.name || 'Sales Report'],
+      [company.address || ''],
+      [`Generated: ${new Date().toLocaleString()}`],
+      [''],
+      headers,
+    ];
+
+    filteredTransactions.forEach((tx) => {
+      const date = new Date(tx.created_at);
+      const items = JSON.parse(tx.items_json);
+      const customer = tx.transaction_customer_id 
+        ? customers.find(c => c.id === tx.transaction_customer_id)?.name || 'Walk-in'
+        : 'Walk-in';
+      const { profit, loss } = calculateTransactionProfitLoss(tx);
+      const netProfit = profit - loss;
+
+      csvRows.push([
+        date.toLocaleDateString(),
+        date.toLocaleTimeString(),
+        tx.id.slice(0, 8).toUpperCase(),
+        customer,
+        items.length.toString(),
+        tx.payment_method.toUpperCase(),
+        formatCurrency(tx.total_amount),
+        formatCurrency(netProfit),
+      ]);
+    });
+
+    const csvContent = csvRows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `sales-report-${filter}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = () => {
+    const company = useCompanyStore.getState().getCompany();
+    const printHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Sales Report - ${filter}</title>
+          <style>
+            @media print {
+              @page { size: A4; margin: 15mm; }
+            }
+            body { font-family: Arial, sans-serif; font-size: 11px; padding: 20px; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+            .company-name { font-size: 18px; font-weight: bold; }
+            .report-title { font-size: 16px; margin: 10px 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
+            th { background: #f5f5f5; font-weight: bold; }
+            .summary { margin-top: 20px; padding-top: 15px; border-top: 2px solid #000; }
+            .summary-row { display: flex; justify-content: space-between; padding: 5px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="company-name">${company.name || 'My Store'}</div>
+            <div>${company.address || ''}</div>
+            <div>${[company.city, company.state, company.pincode].filter(Boolean).join(', ')}</div>
+            <div class="report-title">Sales Report - ${filter.charAt(0).toUpperCase() + filter.slice(1)}</div>
+            <div>Generated: ${new Date().toLocaleString()}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Payment</th>
+                <th>Amount</th>
+                <th>Profit/Loss</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredTransactions.map(tx => {
+                const date = new Date(tx.created_at);
+                const items = JSON.parse(tx.items_json);
+                const customer = tx.transaction_customer_id 
+                  ? customers.find(c => c.id === tx.transaction_customer_id)?.name || 'Walk-in'
+                  : 'Walk-in';
+                const { profit, loss } = calculateTransactionProfitLoss(tx);
+                const netProfit = profit - loss;
+                return `
+                  <tr>
+                    <td>${date.toLocaleDateString()}</td>
+                    <td>${tx.id.slice(0, 8).toUpperCase()}</td>
+                    <td>${customer}</td>
+                    <td>${items.length}</td>
+                    <td>${tx.payment_method.toUpperCase()}</td>
+                    <td>${formatCurrency(tx.total_amount)}</td>
+                    <td>${formatCurrency(netProfit)}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+          <div class="summary">
+            <div class="summary-row"><strong>Total Orders:</strong> ${getTotalTransactions()}</div>
+            <div class="summary-row"><strong>Total Sales:</strong> ${formatCurrency(getTotalSales())}</div>
+            <div class="summary-row"><strong>Total Profit:</strong> ${formatCurrency(getTotalProfitLoss().profit - getTotalProfitLoss().loss)}</div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
     }
   };
 
@@ -177,6 +308,14 @@ export default function SalesOrders() {
     <div className="sales-orders">
       <div className="sales-orders-header">
         <h1>📊 Sales Orders</h1>
+        <div className="export-buttons">
+          <button className="btn btn-secondary" onClick={handleExportCSV} title="Export to CSV">
+            📥 CSV
+          </button>
+          <button className="btn btn-secondary" onClick={handleExportPDF} title="Export to PDF">
+            📄 PDF
+          </button>
+        </div>
       </div>
 
       {/* Filter Buttons */}

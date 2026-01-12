@@ -9,10 +9,10 @@ interface InventoryStore {
   error: string | null;
   loadCategories: () => Promise<void>;
   loadItems: () => Promise<void>;
-  addCategory: (category: Omit<Category, 'id' | 'created_at'>) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'created_at' | 'customer_id'>) => Promise<void>;
   updateCategory: (id: string, category: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
-  addItem: (item: Omit<Item, 'id' | 'created_at'>) => Promise<void>;
+  addItem: (item: Omit<Item, 'id' | 'created_at' | 'customer_id'>) => Promise<void>;
   updateItem: (id: string, item: Partial<Item>) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   searchItems: (query: string) => Promise<Item[]>;

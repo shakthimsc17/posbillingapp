@@ -9,11 +9,16 @@ import Items from './pages/Items';
 import Payment from './pages/Payment';
 import SalesOrders from './pages/SalesOrders';
 import Customers from './pages/Customers';
+import Import from './pages/Import';
+import Reports from './pages/Reports';
+import Calculators from './pages/Calculators';
+import CompanySettings from './pages/CompanySettings';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import { useCompanyStore } from './store/companyStore';
 import './App.css';
 
-type Page = 'dashboard' | 'cart' | 'categories' | 'items' | 'payment' | 'sales' | 'customers';
+type Page = 'dashboard' | 'cart' | 'categories' | 'items' | 'payment' | 'sales' | 'customers' | 'import' | 'reports' | 'calculators' | 'company';
 type AuthPage = 'signin' | 'signup';
 
 function App() {
@@ -23,6 +28,7 @@ function App() {
   const { loadCategories, loadItems } = useInventoryStore();
   const { customer, initialized, initialize, signOut } = useAuthStore();
   const { items: cartItems } = useCartStore();
+  const { company } = useCompanyStore();
 
   useEffect(() => {
     initialize();
@@ -67,7 +73,8 @@ function App() {
         onMouseEnter={() => setSidebarOpen(true)}
       >
         <div className="sidebar-header">
-          <h1>🛒 POS System</h1>
+          <h1>🛒 {company.name || 'POS System'}</h1>
+          {company.phone && <p className="company-phone">{company.phone}</p>}
         </div>
         <nav className="sidebar-nav">
           <button
@@ -111,6 +118,34 @@ function App() {
           >
             <span className="nav-icon">👥</span>
             <span className="nav-text">Customers</span>
+          </button>
+          <button
+            className={currentPage === 'import' ? 'active' : ''}
+            onClick={() => setCurrentPage('import')}
+          >
+            <span className="nav-icon">📥</span>
+            <span className="nav-text">Import</span>
+          </button>
+          <button
+            className={currentPage === 'reports' ? 'active' : ''}
+            onClick={() => setCurrentPage('reports')}
+          >
+            <span className="nav-icon">📊</span>
+            <span className="nav-text">Reports</span>
+          </button>
+          <button
+            className={currentPage === 'calculators' ? 'active' : ''}
+            onClick={() => setCurrentPage('calculators')}
+          >
+            <span className="nav-icon">🧮</span>
+            <span className="nav-text">Calculators</span>
+          </button>
+          <button
+            className={currentPage === 'company' ? 'active' : ''}
+            onClick={() => setCurrentPage('company')}
+          >
+            <span className="nav-icon">🏢</span>
+            <span className="nav-text">Company</span>
           </button>
         </nav>
         
@@ -159,6 +194,10 @@ function App() {
         {currentPage === 'payment' && <Payment onNavigate={setCurrentPage} />}
         {currentPage === 'sales' && <SalesOrders />}
         {currentPage === 'customers' && <Customers />}
+        {currentPage === 'import' && <Import />}
+        {currentPage === 'reports' && <Reports />}
+        {currentPage === 'calculators' && <Calculators />}
+        {currentPage === 'company' && <CompanySettings />}
       </main>
     </div>
   );

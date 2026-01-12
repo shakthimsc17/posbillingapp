@@ -65,6 +65,21 @@
   font-size: 1.3rem;
 }
 
+.summary-item.info-item {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: #fff9e6;
+  border-radius: 8px;
+  border-left: 3px solid #f39c12;
+}
+
+.info-text {
+  color: #f39c12;
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-style: italic;
+}
+
 .total-amount {
   font-size: 2rem;
   font-weight: 700;

@@ -159,6 +159,14 @@
   background: transparent;
 }
 
+.add-subcategory-btn {
+  color: #27ae60;
+}
+
+.add-subcategory-btn:hover {
+  background: rgba(39, 174, 96, 0.1);
+}
+
 .edit-btn {
   color: #667eea;
 }

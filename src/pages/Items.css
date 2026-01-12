@@ -71,6 +71,23 @@
   font-size: 0.9rem;
 }
 
+.item-gm {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.gm-high {
+  color: #27ae60;
+}
+
+.gm-medium {
+  color: #f39c12;
+}
+
+.gm-low {
+  color: #e74c3c;
+}
+
 .items-table tr:hover {
   background: #f9f9f9;
 }

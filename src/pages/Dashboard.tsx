@@ -23,7 +23,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
-      setDisplayItems(items);
+      // Sort items alphabetically by name
+      const sortedItems = [...items].sort((a, b) => 
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      );
+      setDisplayItems(sortedItems);
     } else {
       handleSearch(searchQuery);
     }
@@ -31,11 +35,19 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   const handleSearch = async (query: string) => {
     if (query.trim() === '') {
-      setDisplayItems(items);
+      // Sort items alphabetically by name
+      const sortedItems = [...items].sort((a, b) => 
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      );
+      setDisplayItems(sortedItems);
       return;
     }
     const results = await searchItems(query);
-    setDisplayItems(results);
+    // Sort search results alphabetically too
+    const sortedResults = [...results].sort((a, b) => 
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    );
+    setDisplayItems(sortedResults);
   };
 
   const handleItemPress = (item: Item) => {
@@ -85,7 +97,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       <div className="card">
         <h2>Items ({displayItems.length})</h2>
         {displayItems.length > 0 ? (
-          <div className="grid grid-3">
+          <div className="grid grid-small">
             {displayItems.map((item) => (
               <ItemCard key={item.id} item={item} onPress={handleItemPress} />
             ))}

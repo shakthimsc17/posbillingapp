@@ -3,7 +3,7 @@ import { useCartStore } from '../store/cartStore';
 import { useInventoryStore } from '../store/inventoryStore';
 import { storageService } from '../services/storage';
 import { formatCurrency } from '../utils/formatters';
-import { printThermalReceipt } from '../utils/thermalPrinter';
+import { printReceipt } from '../utils/printer';
 import { Customer } from '../types';
 import './Payment.css';
 
@@ -44,16 +44,14 @@ export default function Payment({ onNavigate }: PaymentProps) {
       return;
     }
 
-    if (paymentMethod === 'cash' && !receivedAmount) {
-      alert('Please enter the received amount');
-      return;
-    }
-
     setProcessing(true);
 
     try {
       const total = getTotal();
-      const received = paymentMethod === 'cash' ? Number(receivedAmount) : total;
+      // If cash payment and no amount entered, treat as exact payment (received = total)
+      const received = paymentMethod === 'cash' 
+        ? (receivedAmount ? Number(receivedAmount) : total)
+        : total;
       // Calculate change (positive) or discount (negative)
       const changeAmount = paymentMethod === 'cash' ? received - total : 0;
       const actualChange = changeAmount > 0 ? changeAmount : 0;
@@ -82,7 +80,7 @@ export default function Payment({ onNavigate }: PaymentProps) {
 
       // Print receipt
       try {
-        printThermalReceipt({
+        printReceipt({
           items,
           transaction: savedTransaction,
         });
@@ -107,7 +105,7 @@ export default function Payment({ onNavigate }: PaymentProps) {
           const receiptItems = typeof savedTransaction.items_json === 'string' 
             ? JSON.parse(savedTransaction.items_json) 
             : savedTransaction.items_json;
-          printThermalReceipt({
+          printReceipt({
             items: receiptItems,
             transaction: savedTransaction,
           });
@@ -126,8 +124,11 @@ export default function Payment({ onNavigate }: PaymentProps) {
   };
 
   const total = getTotal();
-  const received = paymentMethod === 'cash' && receivedAmount ? Number(receivedAmount) : total;
-  const change = paymentMethod === 'cash' && receivedAmount ? received - total : 0;
+  // If cash payment and no amount entered, treat as exact payment (received = total)
+  const received = paymentMethod === 'cash' 
+    ? (receivedAmount ? Number(receivedAmount) : total)
+    : total;
+  const change = paymentMethod === 'cash' ? received - total : 0;
   const discount = change < 0 ? Math.abs(change) : 0;
   const actualChange = change > 0 ? change : 0;
 
@@ -161,8 +162,13 @@ export default function Payment({ onNavigate }: PaymentProps) {
           )}
           <div className="summary-item final-amount">
             <span>Amount to Pay:</span>
-            <span className="final-amount-value">{formatCurrency(received)}</span>
+            <span className="final-amount-value">{formatCurrency(total)}</span>
           </div>
+          {paymentMethod === 'cash' && !receivedAmount && (
+            <div className="summary-item info-item">
+              <span className="info-text">💡 No amount entered - will process as exact payment</span>
+            </div>
+          )}
         </div>
 
         <div className="card customer-selection">
@@ -212,7 +218,7 @@ export default function Payment({ onNavigate }: PaymentProps) {
           <div className="card cash-payment">
             <h2>Cash Payment</h2>
             <label>
-              Received Amount (₹):
+              Received Amount (₹) <span style={{fontSize: '0.85rem', color: '#666', fontWeight: 'normal'}}>(Optional - leave empty for exact payment)</span>:
               <input
                 type="number"
                 className="input"
@@ -220,7 +226,7 @@ export default function Payment({ onNavigate }: PaymentProps) {
                 onChange={(e) => setReceivedAmount(e.target.value)}
                 min="0"
                 step="0.01"
-                placeholder="Enter received amount"
+                placeholder="Enter received amount (or leave empty for exact payment)"
               />
             </label>
             {receivedAmount && Number(receivedAmount) > 0 && (
@@ -245,7 +251,7 @@ export default function Payment({ onNavigate }: PaymentProps) {
           <button
             className="btn btn-primary btn-large"
             onClick={handlePayment}
-            disabled={processing || (paymentMethod === 'cash' && (!receivedAmount || Number(receivedAmount) <= 0))}
+            disabled={processing}
           >
             {processing ? 'Processing...' : 'Complete Payment'}
           </button>

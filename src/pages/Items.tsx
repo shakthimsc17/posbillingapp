@@ -62,11 +62,11 @@ export default function Items() {
   // Get unique subcategories for selected category
   const getSubcategories = () => {
     if (!categoryId) return [];
-    const category = categories.find(c => c.id === categoryId);
-    if (!category) return [];
-    // Get all subcategories from categories with same name or get unique subcategories
+    const selectedCategory = categories.find(c => c.id === categoryId);
+    if (!selectedCategory) return [];
+    // Get all subcategories that belong to this main category (same name)
     const subcats = categories
-      .filter(c => c.id === categoryId || (c.name === category.name && c.subcategory))
+      .filter(c => c.name === selectedCategory.name && c.subcategory)
       .map(c => c.subcategory)
       .filter((sub): sub is string => !!sub);
     return [...new Set(subcats)];
@@ -296,6 +296,7 @@ export default function Items() {
                   <th>Cost</th>
                   <th>Sale Price</th>
                   <th>MRP</th>
+                  <th>GM %</th>
                   <th>Stock</th>
                   <th>Actions</th>
                 </tr>
@@ -308,6 +309,10 @@ export default function Items() {
                   const categoryName = category 
                     ? `${category.name}${item.subcategory ? ` / ${item.subcategory}` : ''}`
                     : '-';
+                  // Calculate GM percentage: ((price - cost) / price) * 100
+                  const gmPercentage = item.price > 0 && item.cost > 0 
+                    ? ((item.price - item.cost) / item.price) * 100 
+                    : 0;
                   return (
                     <tr key={item.id}>
                       <td className="item-name">{item.name}</td>
@@ -319,6 +324,13 @@ export default function Items() {
                       <td className="item-price">{formatCurrency(item.price)}</td>
                       <td className="item-mrp">
                         {item.mrp ? formatCurrency(item.mrp) : '-'}
+                      </td>
+                      <td className="item-gm">
+                        {gmPercentage > 0 ? (
+                          <span className={gmPercentage >= 30 ? 'gm-high' : gmPercentage >= 15 ? 'gm-medium' : 'gm-low'}>
+                            {gmPercentage.toFixed(1)}%
+                          </span>
+                        ) : '-'}
                       </td>
                       <td>
                         <span className={item.stock > 0 ? 'stock-ok' : 'stock-out'}>
@@ -400,7 +412,7 @@ export default function Items() {
                 }}
               >
                 <option value="">None</option>
-                {categories.map((cat) => (
+                {getUniqueMainCategories().map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
